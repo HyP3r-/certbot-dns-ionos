@@ -4,6 +4,7 @@ import logging
 import time
 
 import requests
+import tldextract
 import zope.interface
 
 from certbot import errors
@@ -90,12 +91,13 @@ class _ionosClient(object):
         :returns: The ID of the managed zone, if found.
         :rtype: str zone id, str zone name
         """
+        registered_domain = tldextract.extract(domain).registered_domain
         logger.debug("get zones")
         zones = self._api_request(type='get', action="/dns/v1/zones")
         logger.debug("zones found %s", zones)
         for zone in zones:
             # get the zone id
-            if zone['name'] == domain:
+            if zone['name'] == registered_domain:
                 return zone['id'], zone['name']
         return None, None
 
