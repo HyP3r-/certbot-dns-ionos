@@ -1,12 +1,10 @@
 """DNS Authenticator for IONOS."""
 import json
 import logging
-import time
 
 import requests
 import tldextract
 import zope.interface
-
 from certbot import errors
 from certbot import interfaces
 from certbot.plugins import dns_common
@@ -38,8 +36,8 @@ class Authenticator(dns_common.DNSAuthenticator):
 
     def more_info(self):  # pylint: disable=missing-docstring,no-self-use
         return (
-            "This plugin configures a DNS TXT record to respond to a dns-01 challenge using "
-            + "the IONOS Remote REST API."
+                "This plugin configures a DNS TXT record to respond to a dns-01 challenge using "
+                + "the IONOS Remote REST API."
         )
 
     def _setup_credentials(self):
@@ -64,14 +62,14 @@ class Authenticator(dns_common.DNSAuthenticator):
         )
 
     def _get_ionos_client(self):
-        return _ionosClient(
+        return IonosClient(
             self.credentials.conf("endpoint"),
             self.credentials.conf("prefix"),
             self.credentials.conf("secret"),
         )
 
 
-class _ionosClient(object):
+class IonosClient(object):
     """
     Encapsulates all communication with the IONOS Remote REST API.
     """
@@ -79,9 +77,7 @@ class _ionosClient(object):
     def __init__(self, endpoint, prefix, secret):
         logger.debug("creating ionosclient")
         self.endpoint = endpoint
-        self.headers = {}
-        self.headers['accept'] = 'application/json'
-        self.headers['X-API-Key'] = prefix + '.' + secret
+        self.headers = {'accept': 'application/json', 'X-API-Key': prefix + '.' + secret}
 
     def _find_managed_zone_id(self, domain):
         """
@@ -101,7 +97,7 @@ class _ionosClient(object):
                 return zone['id'], zone['name']
         return None, None
 
-    def _api_request(self, type, action, data = None):
+    def _api_request(self, type, action, data=None):
         url = self._get_url(action)
         resp = None
         if type == 'get':
@@ -189,30 +185,20 @@ class _ionosClient(object):
                 self._delete_txt_record(zone_id, id)
 
     def _update_txt_record(self, zone_id, primary_id, record_content, record_ttl):
-        data = {}
-        data['disabled'] = False
-        data['content'] = record_content
-        data['ttl'] = record_ttl
-        data['prio'] = 0
+        data = {'disabled': False, 'content': record_content, 'ttl': record_ttl, 'prio': 0}
         logger.debug("update with data: %s", data)
-        self._api_request(type='put', action='/dns/v1/zones/{0}/records/{1}'.format(zone_id,primary_id), data=data)
+        self._api_request(type='put', action='/dns/v1/zones/{0}/records/{1}'.format(zone_id, primary_id), data=data)
 
     def _insert_txt_record(self, zone_id, record_name, record_content, record_ttl):
-        data = {}
-        data['disabled'] = False
-        data['type'] = 'TXT'
-        data['name'] = record_name
-        data['content'] = record_content
-        data['ttl'] = record_ttl
-        data['prio'] = 0
-        records = []
-        records.append(data)
+        data = {'disabled': False, 'type': 'TXT', 'name': record_name, 'content': record_content, 'ttl': record_ttl,
+                'prio': 0}
+        records = [data]
         logger.debug("insert with data: %s", data)
         self._api_request(type='patch', action='/dns/v1/zones/{0}'.format(zone_id), data=records)
 
     def _delete_txt_record(self, zone_id, primary_id):
         logger.debug("delete id: %s", primary_id)
-        self._api_request(type='delete', action='/dns/v1/zones/{0}/records/{1}'.format(zone_id,primary_id))
+        self._api_request(type='delete', action='/dns/v1/zones/{0}/records/{1}'.format(zone_id, primary_id))
 
     def get_existing_txt(self, zone_id, record_name):
         """
@@ -231,10 +217,10 @@ class _ionosClient(object):
         zone_data = self._api_request(type='get', action='/dns/v1/zones/{0}'.format(zone_id))
         for entry in zone_data['records']:
             if (
-                entry["name"] == record_name
-                and entry["type"] == "TXT"
+                    entry["name"] == record_name
+                    and entry["type"] == "TXT"
             ):
-                #seems "content" is double quoted. Remove quotes
+                # seems "content" is double quoted. Remove quotes
                 content = entry["content"]
                 content = content.lstrip('\"')
                 content = content.rstrip('\"')
